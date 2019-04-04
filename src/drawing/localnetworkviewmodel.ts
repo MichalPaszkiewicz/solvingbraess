@@ -8,11 +8,13 @@ import { RoadViewModel } from "./roadviewmodel";
 import { Vector } from "./vector";
 import { JunctionXY } from "./junctionxy";
 import { LocalNetwork } from "../model/localnetwork";
+import { Car } from "./car";
 
 export class LocalNetworkViewModel extends Drawing {
 
     Junctions: JunctionXY[];
     RoadsXY: Vector[] = [];
+    Cars: Car[] = [];
 
     constructor(public DrawingSpace: IAmADrawingSpace, scale: number, public Network: LocalNetwork){
         super(DrawingSpace.Left + DrawingSpace.Width / 2, DrawingSpace.Top + DrawingSpace.Height / 2, scale);
@@ -39,6 +41,10 @@ export class LocalNetworkViewModel extends Drawing {
         })
     }
 
+    addCar(car: Car){
+        this.Cars.push(car);
+    }
+
     addJunction(junction: Junction){
         this.Junctions.push(new JunctionXY(junction, (new Vector(this.X, this.Y)).random(20), []));
     }
@@ -59,7 +65,22 @@ export class LocalNetworkViewModel extends Drawing {
         this.Junctions.forEach(j => {
             var jvm = new JunctionViewModel(j.P.X, j.P.Y, settings.Scale, j.Junction.Id, j.Junction.Highlighted);
             jvm.draw(drawingSpace, settings, j.Selected);
-        })
+        });
+
+        this.Cars.forEach(c => {
+            if(c.Finished){
+                return;
+            }
+            var road = c.Path.RoadSequence[c.Stage];
+            var j1 = this.Junctions.filter(j => j.Junction.Id == road.StartId)[0];
+            var j2 = this.Junctions.filter(j => j.Junction.Id == road.EndId)[0];
+
+            var pos = j1.P.add(j2.P.subtract(j1.P).times(c.Position));
+
+            drawingSpace.Context.fillStyle = "red";
+            drawingSpace.Context.fillRect(pos.X, pos.Y, 5, 5);
+        });
+        
     }
 
     run(settings: IAmSettings){
@@ -67,6 +88,10 @@ export class LocalNetworkViewModel extends Drawing {
         self.Junctions.forEach(j => {
             j.update(new Vector(self.X, self.Y), self.Junctions.filter(j2 => !j2.P.equals(j.P)), self.RoadsXY);
         });
+        self.Cars.forEach(c => {
+            c.update();
+        });
+        self.Cars = self.Cars.filter(c => !c.Finished);
 
         self.draw(self.DrawingSpace, settings);
 

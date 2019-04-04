@@ -1,5 +1,5 @@
-export enum Direction{
-    Default,
+export enum Direction {
+    Multidirectional,
     Forward,
-    Reverse
+    Reverse    
 }

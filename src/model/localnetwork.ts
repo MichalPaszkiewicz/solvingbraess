@@ -27,7 +27,7 @@ export class LocalNetwork implements IAmARoadNetwork {
         this.Roads.push(road);
     }
 
-    addLaneToRoad(roadId: string, travelTimeFunction: TravelTimeFunction, direction: Direction = Direction.Default){
+    addLaneToRoad(roadId: string, travelTimeFunction: TravelTimeFunction, direction: Direction = Direction.Multidirectional){
         var relevantRoads = this.Roads.filter(r => r.Id === roadId);
 
         if(relevantRoads.length < 1){
