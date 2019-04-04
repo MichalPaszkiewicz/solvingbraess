@@ -1,0 +1,25 @@
+<html>
+    <head>
+        <style>
+            body{
+                margin: 0;
+            }
+            .controls{
+                position: absolute;
+                top: 10px;
+                right: 10px;
+            }
+        </style>
+    </head>
+    <body>
+        <canvas id="main"></canvas>
+        <div class="controls">
+            <button id="recentre">Recentre</button>
+        </div>
+        <script type="application/javascript" src="scripts/system.js"></script>
+        <script src="dist/main.js" ></script>
+        <script type="application/javascript">
+                System.import("main").catch(function(err){ console.error(err); });;            
+        </script>
+    </body>
+</html>

@@ -1,0 +1,1 @@
+export type TravelTimeFunction = (vehicles: number) => number;

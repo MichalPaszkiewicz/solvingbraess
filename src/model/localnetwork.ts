@@ -1,0 +1,118 @@
+import { Road } from "./road";
+import { Junction } from "./junction";
+import { TravelTimeFunction } from "./traveltimefunction";
+import { Lane } from "./lane";
+import { Direction } from "./direction";
+import { IAmARoadNetwork } from "../interfaces/iamaroadnetwork";
+import { Path } from "./path";
+
+export class LocalNetwork implements IAmARoadNetwork {
+
+    constructor(
+        public Junctions: Junction[],
+        public Roads: Road[]
+    ){
+
+    }
+
+    addJunction(junction: Junction){
+        this.Junctions.push(junction);
+    }
+
+    connectJunctions(id: string, junction1Id: string, junction2Id: string){
+        this.Roads.push(new Road(id, junction1Id, junction2Id, []));
+    }
+
+    addRoad(road: Road){
+        this.Roads.push(road);
+    }
+
+    addLaneToRoad(roadId: string, travelTimeFunction: TravelTimeFunction, direction: Direction = Direction.Default){
+        var relevantRoads = this.Roads.filter(r => r.Id === roadId);
+
+        if(relevantRoads.length < 1){
+            throw new Error(`No road exists with Id: ${roadId}`);
+        }
+
+        relevantRoads[0].Lanes.push(new Lane(direction, travelTimeFunction));
+    }
+
+    getPaths(
+        junction1Id: string, 
+        junction2Id: string, 
+        roadScoringFunction?: (road: Road) => number, 
+        junctionScoringFunction?: (junction: Junction) => number): Path[] {
+        throw new Error("Method not implemented.");
+    }
+
+    findJunction(id: string){
+        return this.Junctions.filter(j => j.Id == id)[0];
+    }
+
+    findRoads(id: string): Road[]{
+        return this.Roads.filter(r => r.StartId == id || r.EndId == id);
+    }
+
+    findOppositeJunctionOfRoad(junctionId: string, road: Road){
+        if(road.StartId == junctionId){
+            return this.findJunction(road.EndId);
+        }
+        return this.findJunction(road.StartId);
+    }
+
+    calculateQuickestPathBetweenJunctions(junction1: Junction, junction2: Junction){
+        if(junction1 == null || junction2 == null){
+            return;
+        }
+        var self = this;
+        var usedJunctions: Junction[] = [junction1];
+        var paths: Path[] = [new Path(() => 1, () => 0, [junction1], [])];
+        var destinationFound = false;
+        while(!destinationFound){
+            var newPaths: Path[] = [];
+
+            for(var i = 0; i < paths.length; i++){
+                var currentPath = paths[i];
+                var currentPathLastJunction = currentPath.getLatestJunction();
+
+                var childPaths = self.findRoads(currentPathLastJunction.Id).map(r => 
+                    new Path(
+                    currentPath.roadScoringFunction,
+                    currentPath.junctionScoringFunction,
+                    [...currentPath.JunctionSequence, self.findOppositeJunctionOfRoad(currentPathLastJunction.Id, r)], 
+                    [...currentPath.RoadSequence, r]));
+
+                for(var j = 0; j < childPaths.length; j++){
+                    var latestJunction = childPaths[j].getLatestJunction();
+
+                    if(usedJunctions.indexOf(latestJunction) == -1){
+                        if(latestJunction == junction2){
+                            destinationFound = true;
+                            childPaths[j].JunctionSequence.forEach(jun => jun.Highlighted = true);
+                            childPaths[j].RoadSequence.forEach(roa => roa.Highlighted = true);
+                            return childPaths[j];
+                        }
+                        else{
+                            newPaths.push(childPaths[j]);
+                            usedJunctions.push(latestJunction);
+                        }
+                    }
+                }
+            }
+            if(usedJunctions.length > this.Junctions.length){
+            return;
+            }
+
+            paths = newPaths;
+        }  
+    }
+
+    calculateQuickestPath(junction1Id: string, junction2Id: string){
+        return this.calculateQuickestPathBetweenJunctions(this.findJunction(junction1Id), this.findJunction(junction2Id));
+    }
+
+    unHighlight(){
+        this.Junctions.forEach(j => j.Highlighted = false);
+        this.Roads.forEach(r => r.Highlighted = false);
+    }
+}
