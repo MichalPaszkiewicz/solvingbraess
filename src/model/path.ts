@@ -22,6 +22,24 @@ export class Path {
             })
     }
 
+    hasDuplicateJunctions(){
+        let juncs = [];
+        for(var i = 0; i < this.JunctionSequence.length; i++){
+            if(juncs.indexOf(this.JunctionSequence[i]) > -1){
+                return true;
+            }
+            juncs.push(this.JunctionSequence[i]);
+        }
+        return false;
+    }
+
+    getScore(){
+        var score = 0;
+        this.JunctionSequence.forEach(j => score += this.junctionScoringFunction(j));
+        this.RoadSequence.forEach(r => score += this.roadScoringFunction(r));
+        return score;
+    }
+
     addRoad(road: Road){
         this.RoadSequence.push(road);
         this.Score += this.roadScoringFunction(road);

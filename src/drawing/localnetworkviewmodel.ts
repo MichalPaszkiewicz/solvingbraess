@@ -72,12 +72,22 @@ export class LocalNetworkViewModel extends Drawing {
                 return;
             }
             var road = c.Path.RoadSequence[c.Stage];
-            var j1 = this.Junctions.filter(j => j.Junction.Id == road.StartId)[0];
-            var j2 = this.Junctions.filter(j => j.Junction.Id == road.EndId)[0];
+            var roadStart = c.Path.JunctionSequence[c.Stage].Id;
+
+            var j1:JunctionXY;
+            var j2:JunctionXY;
+            if(road.StartId == roadStart){
+                j1 = this.Junctions.filter(j => j.Junction.Id == road.StartId)[0];
+                j2 = this.Junctions.filter(j => j.Junction.Id == road.EndId)[0];
+            }            
+            else{
+                j2 = this.Junctions.filter(j => j.Junction.Id == road.StartId)[0];
+                j1 = this.Junctions.filter(j => j.Junction.Id == road.EndId)[0];
+            }
 
             var pos = j1.P.add(j2.P.subtract(j1.P).times(c.Position));
 
-            drawingSpace.Context.fillStyle = "red";
+            drawingSpace.Context.fillStyle = c.Colour;
             drawingSpace.Context.fillRect(pos.X, pos.Y, 5, 5);
         });
         

@@ -499,6 +499,23 @@ System.register("model/path", [], function (exports_17, context_17) {
                         self.addRoad(r);
                     });
                 }
+                Path.prototype.hasDuplicateJunctions = function () {
+                    var juncs = [];
+                    for (var i = 0; i < this.JunctionSequence.length; i++) {
+                        if (juncs.indexOf(this.JunctionSequence[i]) > -1) {
+                            return true;
+                        }
+                        juncs.push(this.JunctionSequence[i]);
+                    }
+                    return false;
+                };
+                Path.prototype.getScore = function () {
+                    var _this = this;
+                    var score = 0;
+                    this.JunctionSequence.forEach(function (j) { return score += _this.junctionScoringFunction(j); });
+                    this.RoadSequence.forEach(function (r) { return score += _this.roadScoringFunction(r); });
+                    return score;
+                };
                 Path.prototype.addRoad = function (road) {
                     this.RoadSequence.push(road);
                     this.Score += this.roadScoringFunction(road);
@@ -596,36 +613,61 @@ System.register("model/localnetwork", ["model/road", "model/lane", "model/direct
                     }
                     var self = this;
                     var usedJunctions = [junction1];
-                    var paths = [new path_1.Path(function () { return 1; }, function () { return 0; }, [junction1], [])];
+                    var paths = [new path_1.Path(function (r) { return r.Lanes[0].getRemainingTravelTime(0); }, function () { return 0; }, [junction1], [])];
                     var destinationFound = false;
                     while (!destinationFound) {
-                        var newPaths = [];
+                        var minScore = Infinity;
+                        var min = paths[0];
+                        var minIndex = 0;
                         for (var i = 0; i < paths.length; i++) {
-                            var currentPath = paths[i];
-                            var currentPathLastJunction = currentPath.getLatestJunction();
-                            var childPaths = self.findRoads(currentPathLastJunction.Id).map(function (r) {
-                                return new path_1.Path(currentPath.roadScoringFunction, currentPath.junctionScoringFunction, currentPath.JunctionSequence.concat([self.findOppositeJunctionOfRoad(currentPathLastJunction.Id, r)]), currentPath.RoadSequence.concat([r]));
-                            });
-                            for (var j = 0; j < childPaths.length; j++) {
-                                var latestJunction = childPaths[j].getLatestJunction();
-                                if (usedJunctions.indexOf(latestJunction) == -1) {
-                                    if (latestJunction == junction2) {
-                                        destinationFound = true;
-                                        childPaths[j].JunctionSequence.forEach(function (jun) { return jun.Highlighted = true; });
-                                        childPaths[j].RoadSequence.forEach(function (roa) { return roa.Highlighted = true; });
-                                        return childPaths[j];
-                                    }
-                                    else {
-                                        newPaths.push(childPaths[j]);
-                                        usedJunctions.push(latestJunction);
-                                    }
-                                }
+                            var pathScore = paths[i].getScore();
+                            if (pathScore <= minScore) {
+                                minScore = pathScore;
+                                min = paths[i];
+                                minIndex = i;
                             }
                         }
-                        if (usedJunctions.length > this.Junctions.length) {
-                            return;
+                        var minPathLastJunction = min.getLatestJunction();
+                        if (minPathLastJunction == junction2) {
+                            destinationFound = true;
+                            return min;
                         }
-                        paths = newPaths;
+                        var childPaths = self.findRoads(minPathLastJunction.Id).map(function (r) {
+                            return new path_1.Path(min.roadScoringFunction, min.junctionScoringFunction, min.JunctionSequence.concat([self.findOppositeJunctionOfRoad(minPathLastJunction.Id, r)]), min.RoadSequence.concat([r]));
+                        });
+                        paths.splice(minIndex, 1);
+                        paths = paths.concat(childPaths.filter(function (cp) { return !cp.hasDuplicateJunctions(); }));
+                        // old:
+                        //var newPaths: Path[] = [];
+                        // for(var i = 0; i < paths.length; i++){
+                        //     var currentPath = paths[i];
+                        //     var currentPathLastJunction = currentPath.getLatestJunction();
+                        //     var childPaths = self.findRoads(currentPathLastJunction.Id).map(r => 
+                        //         new Path(
+                        //         currentPath.roadScoringFunction,
+                        //         currentPath.junctionScoringFunction,
+                        //         [...currentPath.JunctionSequence, self.findOppositeJunctionOfRoad(currentPathLastJunction.Id, r)], 
+                        //         [...currentPath.RoadSequence, r]));
+                        //     for(var j = 0; j < childPaths.length; j++){
+                        //         var latestJunction = childPaths[j].getLatestJunction();
+                        //         if(usedJunctions.indexOf(latestJunction) == -1){
+                        //             if(latestJunction == junction2){
+                        //                 destinationFound = true;
+                        //                 childPaths[j].JunctionSequence.forEach(jun => jun.Highlighted = true);
+                        //                 childPaths[j].RoadSequence.forEach(roa => roa.Highlighted = true);
+                        //                 return childPaths[j];
+                        //             }
+                        //             else{
+                        //                 newPaths.push(childPaths[j]);
+                        //                 usedJunctions.push(latestJunction);
+                        //             }
+                        //         }
+                        //     }
+                        // }
+                        // if(usedJunctions.length > this.Junctions.length){
+                        // return;
+                        // }
+                        // paths = newPaths;
                     }
                 };
                 LocalNetwork.prototype.calculateQuickestPath = function (junction1Id, junction2Id) {
@@ -666,7 +708,7 @@ System.register("helpers/guid", [], function (exports_20, context_20) {
 System.register("drawing/car", ["helpers/guid"], function (exports_21, context_21) {
     "use strict";
     var __moduleName = context_21 && context_21.id;
-    var guid_1, Car;
+    var guid_1, colours, Car;
     return {
         setters: [
             function (guid_1_1) {
@@ -674,14 +716,17 @@ System.register("drawing/car", ["helpers/guid"], function (exports_21, context_2
             }
         ],
         execute: function () {
+            colours = ["red", "navy", "black", "darkorange"];
             Car = /** @class */ (function () {
-                function Car(Path) {
+                function Car(Path, finalReport) {
                     this.Path = Path;
+                    this.finalReport = finalReport;
                     this.Id = guid_1.Guid.newGuid();
                     this.Stage = 0;
                     this.Position = 0;
                     this.Started = false;
                     this.Finished = false;
+                    this.Colour = colours[Math.floor(Math.random() * 4)];
                     this._stageStartTime = new Date().getTime();
                 }
                 Car.prototype.update = function () {
@@ -692,6 +737,7 @@ System.register("drawing/car", ["helpers/guid"], function (exports_21, context_2
                     if (!this.Started) {
                         this.Path.RoadSequence[this.Stage].Lanes[0].addVehicle(this.Id);
                         this.Started = true;
+                        this._carStartTime = new Date().getTime();
                     }
                     var remainingTime = this.Path.RoadSequence[this.Stage].Lanes[0].getRemainingTravelTime(this.Position);
                     this.Position += (currentTime / (remainingTime > 0 ? remainingTime : 0.01)) * (1 - this.Position); //(currentTime % 5000) / 5000;
@@ -701,6 +747,8 @@ System.register("drawing/car", ["helpers/guid"], function (exports_21, context_2
                         this.Stage++;
                         if (this.Stage >= this.Path.RoadSequence.length) {
                             this.Finished = true;
+                            var totalTime = new Date().getTime() - this._carStartTime;
+                            this.finalReport(totalTime);
                             return;
                         }
                         this.Path.RoadSequence[this.Stage].Lanes[0].addVehicle(this.Id);
@@ -793,10 +841,19 @@ System.register("drawing/localnetworkviewmodel", ["drawing/drawing", "drawing/ju
                             return;
                         }
                         var road = c.Path.RoadSequence[c.Stage];
-                        var j1 = _this.Junctions.filter(function (j) { return j.Junction.Id == road.StartId; })[0];
-                        var j2 = _this.Junctions.filter(function (j) { return j.Junction.Id == road.EndId; })[0];
+                        var roadStart = c.Path.JunctionSequence[c.Stage].Id;
+                        var j1;
+                        var j2;
+                        if (road.StartId == roadStart) {
+                            j1 = _this.Junctions.filter(function (j) { return j.Junction.Id == road.StartId; })[0];
+                            j2 = _this.Junctions.filter(function (j) { return j.Junction.Id == road.EndId; })[0];
+                        }
+                        else {
+                            j2 = _this.Junctions.filter(function (j) { return j.Junction.Id == road.StartId; })[0];
+                            j1 = _this.Junctions.filter(function (j) { return j.Junction.Id == road.EndId; })[0];
+                        }
                         var pos = j1.P.add(j2.P.subtract(j1.P).times(c.Position));
-                        drawingSpace.Context.fillStyle = "red";
+                        drawingSpace.Context.fillStyle = c.Colour;
                         drawingSpace.Context.fillRect(pos.X, pos.Y, 5, 5);
                     });
                 };
@@ -936,10 +993,10 @@ System.register("controls/keyboardcontol", [], function (exports_24, context_24)
         }
     };
 });
-System.register("main", ["drawing/canvasspace", "settings", "drawing/localnetworkviewmodel", "model/junction", "model/road", "controls/mousecontrol", "model/localnetwork", "controls/keyboardcontol", "drawing/car", "model/lane", "model/direction"], function (exports_25, context_25) {
+System.register("main", ["drawing/canvasspace", "settings", "drawing/localnetworkviewmodel", "model/junction", "model/road", "controls/mousecontrol", "model/localnetwork", "controls/keyboardcontol", "drawing/car", "model/lane", "model/direction", "helpers/guid"], function (exports_25, context_25) {
     "use strict";
     var __moduleName = context_25 && context_25.id;
-    var canvasspace_1, settings_1, localnetworkviewmodel_1, junction_1, road_2, mousecontrol_1, localnetwork_1, keyboardcontol_1, car_1, lane_2, direction_2, canvasSpace, settings, ln, n, mc, JunctionSelectionRegistration, carFlow, selectionRegistrations, oldId, num, kc, Main;
+    var canvasspace_1, settings_1, localnetworkviewmodel_1, junction_1, road_2, mousecontrol_1, localnetwork_1, keyboardcontol_1, car_1, lane_2, direction_2, guid_2, canvasSpace, graphCanvas, settings, speedConst, ln, n, mc, JunctionSelectionRegistration, maxNum, nums, averagingNum, graphI, logNum, carFlow, selectionRegistrations, oldId, num, kc, braessButton, Main;
     return {
         setters: [
             function (canvasspace_1_1) {
@@ -974,24 +1031,30 @@ System.register("main", ["drawing/canvasspace", "settings", "drawing/localnetwor
             },
             function (direction_2_1) {
                 direction_2 = direction_2_1;
+            },
+            function (guid_2_1) {
+                guid_2 = guid_2_1;
             }
         ],
         execute: function () {
             canvasSpace = canvasspace_1.CanvasSpace.fromId("main");
+            graphCanvas = canvasspace_1.CanvasSpace.fromId("graph");
             settings = new settings_1.Settings();
+            speedConst = 2;
             ln = new localnetwork_1.LocalNetwork([
                 new junction_1.Junction("a"),
                 new junction_1.Junction("b"),
                 new junction_1.Junction("c"),
-                new junction_1.Junction("z"),
+                new junction_1.Junction("z")
             ], [
-                new road_2.Road("r1", "a", "b", [new lane_2.Lane(direction_2.Direction.Multidirectional, (function (vs) { return vs * 500; }))]),
-                new road_2.Road("r2", "a", "c", [new lane_2.Lane(direction_2.Direction.Multidirectional, (function (vs) { return 5000 + 50 * vs; }))]),
-                new road_2.Road("r3", "b", "z", [new lane_2.Lane(direction_2.Direction.Multidirectional, (function (vs) { return 5000 + 50 * vs; }))]),
-                new road_2.Road("r4", "c", "z", [new lane_2.Lane(direction_2.Direction.Multidirectional, (function (vs) { return vs * 500; }))]),
+                new road_2.Road("r1", "a", "b", [new lane_2.Lane(direction_2.Direction.Multidirectional, (function (vs) { return vs * 100 * speedConst; }))]),
+                new road_2.Road("r2", "a", "c", [new lane_2.Lane(direction_2.Direction.Multidirectional, (function (vs) { return 1000 * speedConst + 10 * speedConst * vs; }))]),
+                new road_2.Road("r3", "b", "z", [new lane_2.Lane(direction_2.Direction.Multidirectional, (function (vs) { return 1000 * speedConst + 10 * speedConst * vs; }))]),
+                new road_2.Road("r4", "c", "z", [new lane_2.Lane(direction_2.Direction.Multidirectional, (function (vs) { return vs * 100 * speedConst; }))])
+                //new Road("r5", "b", "c", [new Lane(Direction.Multidirectional, (vs => 100 + 10 * vs))])
             ]);
             n = new localnetworkviewmodel_1.LocalNetworkViewModel(canvasSpace, 1, ln);
-            n.addCar(new car_1.Car(ln.calculateQuickestPath("a", "z")));
+            //n.addCar(new Car(ln.calculateQuickestPath("a", "z")));
             n.run(settings);
             mc = new mousecontrol_1.MouseControl(canvasSpace);
             JunctionSelectionRegistration = /** @class */ (function () {
@@ -1002,15 +1065,54 @@ System.register("main", ["drawing/canvasspace", "settings", "drawing/localnetwor
                 }
                 return JunctionSelectionRegistration;
             }());
-            carFlow = function (oi, ni) {
-                window.setInterval(function () {
+            maxNum = 0;
+            nums = [];
+            averagingNum = 2;
+            graphI = 0;
+            graphCanvas.Context.lineWidth = 3;
+            graphCanvas.Context.strokeStyle = "#0a730a";
+            logNum = function (n) {
+                if (n > maxNum) {
+                    maxNum = n;
+                    console.log("max: " + maxNum);
+                }
+                nums.push(n);
+                if (nums.length > averagingNum) {
+                    var tot = 0;
+                    nums.forEach(function (n) {
+                        tot += n;
+                    });
+                    //console.log("avg: " + (tot/10));
+                    if (graphI > graphCanvas.Width) {
+                        graphCanvas.Context.clearRect(0, 0, graphCanvas.Width, graphCanvas.Height);
+                        graphI = 0;
+                    }
+                    graphCanvas.Context.beginPath();
+                    graphCanvas.Context.moveTo(graphI, graphCanvas.Bottom);
+                    graphCanvas.Context.lineTo(graphI, graphCanvas.Bottom - graphCanvas.Height * (tot / (5000 * speedConst * averagingNum)));
+                    graphCanvas.Context.stroke();
+                    graphCanvas.Context.closePath();
+                    graphI += 5;
+                    nums = [];
+                }
+            };
+            carFlow = function (oi, ni, id) {
+                var carNumbers = n.Cars.length;
+                if (carNumbers < 20) {
                     ln.unHighlight();
-                    n.addCar(new car_1.Car(ln.calculateQuickestPath(oi, ni)));
-                }, 500 + 1000 * Math.random());
+                    var path = ln.calculateQuickestPath(oi, ni);
+                    path.RoadSequence.forEach(function (r) { return r.Highlighted = true; });
+                    path.JunctionSequence.forEach(function (j) { return j.Highlighted = true; });
+                    n.addCar(new car_1.Car(path, logNum));
+                }
+                //console.log(carNumbers);
+                window.setTimeout(function () {
+                    carFlow(oi, ni, id);
+                }, 10 * speedConst + 20 * speedConst * Math.random());
             };
             selectionRegistrations = [
                 new JunctionSelectionRegistration("t", false, function () {
-                    var rd = new road_2.Road("r" + num, oldId, n.SelectedId, [new lane_2.Lane(direction_2.Direction.Multidirectional, function (vs) { return 500 + 50 * vs; })]);
+                    var rd = new road_2.Road("r" + num, oldId, n.SelectedId, [new lane_2.Lane(direction_2.Direction.Multidirectional, function (vs) { return 1000 + 200 * vs; })]);
                     ln.addRoad(rd);
                     n.addRoad(rd);
                 }),
@@ -1018,12 +1120,13 @@ System.register("main", ["drawing/canvasspace", "settings", "drawing/localnetwor
                     ln.calculateQuickestPath(oldId, n.SelectedId);
                 }),
                 new JunctionSelectionRegistration("c", false, function (oldId, newId) {
-                    var oi = oldId;
-                    var ni = newId;
-                    window.setInterval(function () {
-                        ln.unHighlight();
-                        n.addCar(new car_1.Car(ln.calculateQuickestPath(oi, ni)));
-                    }, 500 + 1000 * Math.random());
+                    carFlow(oldId, newId, guid_2.Guid.newGuid());
+                    // let oi = oldId;
+                    // let ni = newId;
+                    // window.setInterval(() => {
+                    //     ln.unHighlight();
+                    //     n.addCar(new Car(ln.calculateQuickestPath(oi, ni)));
+                    // }, 500 + 1000 * Math.random())
                 })
             ];
             mc.onclick = function (p) {
@@ -1085,6 +1188,14 @@ System.register("main", ["drawing/canvasspace", "settings", "drawing/localnetwor
             });
             document.getElementById("recentre").onclick = function () {
                 n.recentre();
+            };
+            braessButton = document.getElementById("braess");
+            braessButton.onclick = function () {
+                graphCanvas.Context.strokeStyle = "#dd6f6f";
+                var rd = new road_2.Road("r" + num, "b", "c", [new lane_2.Lane(direction_2.Direction.Multidirectional, function (vs) { return 100 * speedConst + 10 * vs * speedConst; })]);
+                ln.addRoad(rd);
+                n.addRoad(rd);
+                braessButton.remove();
             };
             Main = /** @class */ (function () {
                 function Main() {

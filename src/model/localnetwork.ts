@@ -66,44 +66,75 @@ export class LocalNetwork implements IAmARoadNetwork {
         }
         var self = this;
         var usedJunctions: Junction[] = [junction1];
-        var paths: Path[] = [new Path(() => 1, () => 0, [junction1], [])];
+        var paths: Path[] = [new Path((r) => r.Lanes[0].getRemainingTravelTime(0), () => 0, [junction1], [])];
         var destinationFound = false;
         while(!destinationFound){
-            var newPaths: Path[] = [];
-
+            var minScore = Infinity;
+            var min: Path = paths[0];
+            var minIndex = 0;
             for(var i = 0; i < paths.length; i++){
-                var currentPath = paths[i];
-                var currentPathLastJunction = currentPath.getLatestJunction();
-
-                var childPaths = self.findRoads(currentPathLastJunction.Id).map(r => 
-                    new Path(
-                    currentPath.roadScoringFunction,
-                    currentPath.junctionScoringFunction,
-                    [...currentPath.JunctionSequence, self.findOppositeJunctionOfRoad(currentPathLastJunction.Id, r)], 
-                    [...currentPath.RoadSequence, r]));
-
-                for(var j = 0; j < childPaths.length; j++){
-                    var latestJunction = childPaths[j].getLatestJunction();
-
-                    if(usedJunctions.indexOf(latestJunction) == -1){
-                        if(latestJunction == junction2){
-                            destinationFound = true;
-                            childPaths[j].JunctionSequence.forEach(jun => jun.Highlighted = true);
-                            childPaths[j].RoadSequence.forEach(roa => roa.Highlighted = true);
-                            return childPaths[j];
-                        }
-                        else{
-                            newPaths.push(childPaths[j]);
-                            usedJunctions.push(latestJunction);
-                        }
-                    }
+                var pathScore = paths[i].getScore();
+                if(pathScore <= minScore){
+                    minScore = pathScore;
+                    min = paths[i];
+                    minIndex = i;
                 }
             }
-            if(usedJunctions.length > this.Junctions.length){
-            return;
-            }
 
-            paths = newPaths;
+            var minPathLastJunction = min.getLatestJunction();
+
+            if(minPathLastJunction == junction2){
+                destinationFound = true;
+                return min;
+            }            
+
+            var childPaths = self.findRoads(minPathLastJunction.Id).map(r => 
+                new Path(
+                min.roadScoringFunction,
+                min.junctionScoringFunction,
+                [...min.JunctionSequence, self.findOppositeJunctionOfRoad(minPathLastJunction.Id, r)], 
+                [...min.RoadSequence, r]));
+
+            paths.splice(minIndex, 1);
+            paths = paths.concat(childPaths.filter(cp => !cp.hasDuplicateJunctions()));
+
+                // old:
+
+            //var newPaths: Path[] = [];
+
+            // for(var i = 0; i < paths.length; i++){
+            //     var currentPath = paths[i];
+            //     var currentPathLastJunction = currentPath.getLatestJunction();
+
+            //     var childPaths = self.findRoads(currentPathLastJunction.Id).map(r => 
+            //         new Path(
+            //         currentPath.roadScoringFunction,
+            //         currentPath.junctionScoringFunction,
+            //         [...currentPath.JunctionSequence, self.findOppositeJunctionOfRoad(currentPathLastJunction.Id, r)], 
+            //         [...currentPath.RoadSequence, r]));
+
+            //     for(var j = 0; j < childPaths.length; j++){
+            //         var latestJunction = childPaths[j].getLatestJunction();
+
+            //         if(usedJunctions.indexOf(latestJunction) == -1){
+            //             if(latestJunction == junction2){
+            //                 destinationFound = true;
+            //                 childPaths[j].JunctionSequence.forEach(jun => jun.Highlighted = true);
+            //                 childPaths[j].RoadSequence.forEach(roa => roa.Highlighted = true);
+            //                 return childPaths[j];
+            //             }
+            //             else{
+            //                 newPaths.push(childPaths[j]);
+            //                 usedJunctions.push(latestJunction);
+            //             }
+            //         }
+            //     }
+            // }
+            // if(usedJunctions.length > this.Junctions.length){
+            // return;
+            // }
+
+            // paths = newPaths;
         }  
     }
 

@@ -3,6 +3,8 @@ import { CanvasSpace } from "./canvasspace";
 import { Settings } from "../settings";
 import { Guid } from "../helpers/guid";
 
+var colours = ["red", "navy", "black", "darkorange"]
+
 export class Car{
 
     Id = Guid.newGuid();
@@ -10,10 +12,12 @@ export class Car{
     Position = 0;
     Started = false;
     Finished = false;
+    Colour = colours[Math.floor(Math.random() * 4)]
     
     private _stageStartTime = new Date().getTime();
+    private _carStartTime;
 
-    constructor(public Path: Path){
+    constructor(public Path: Path, public finalReport: (totalTime: number) => void){
 
     }
 
@@ -26,6 +30,7 @@ export class Car{
         if(!this.Started){
             this.Path.RoadSequence[this.Stage].Lanes[0].addVehicle(this.Id);
             this.Started = true;
+            this._carStartTime = new Date().getTime();
         }
 
         var remainingTime = this.Path.RoadSequence[this.Stage].Lanes[0].getRemainingTravelTime(this.Position);
@@ -38,6 +43,8 @@ export class Car{
             this.Stage++;
             if(this.Stage >= this.Path.RoadSequence.length){
                 this.Finished = true;
+                var totalTime = new Date().getTime() - this._carStartTime;
+                this.finalReport(totalTime);
                 return;
             }
             this.Path.RoadSequence[this.Stage].Lanes[0].addVehicle(this.Id);

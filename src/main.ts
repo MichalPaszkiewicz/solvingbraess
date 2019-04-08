@@ -12,26 +12,30 @@ import { KeyboardControl } from "./controls/keyboardcontol";
 import { Car } from "./drawing/car";
 import { Lane } from "./model/lane";
 import { Direction } from "./model/direction";
+import { Guid } from "./helpers/guid";
 
 var canvasSpace = CanvasSpace.fromId("main");
+var graphCanvas = CanvasSpace.fromId("graph");
 var settings = new Settings();
+
+var speedConst = 2;
 
 var ln = new LocalNetwork([
     new Junction("a"),
     new Junction("b"),
     new Junction("c"),
-    new Junction("z"),
+    new Junction("z")
 ], [
-    new Road("r1","a", "b",[new Lane(Direction.Multidirectional, (vs => vs * 500))]),
-    new Road("r2", "a", "c", [new Lane(Direction.Multidirectional, (vs => 5000 + 50 * vs))]),
-    new Road("r3", "b", "z", [new Lane(Direction.Multidirectional, (vs => 5000 + 50 * vs))]),
-    new Road("r4", "c", "z", [new Lane(Direction.Multidirectional, (vs => vs * 500))]),
+    new Road("r1","a", "b",[new Lane(Direction.Multidirectional, (vs => vs * 100 * speedConst))]),
+    new Road("r2", "a", "c", [new Lane(Direction.Multidirectional, (vs => 1000 * speedConst + 10 * speedConst * vs))]),
+    new Road("r3", "b", "z", [new Lane(Direction.Multidirectional, (vs => 1000 * speedConst + 10 * speedConst * vs))]),
+    new Road("r4", "c", "z", [new Lane(Direction.Multidirectional, (vs => vs * 100 * speedConst))])
     //new Road("r5", "b", "c", [new Lane(Direction.Multidirectional, (vs => 100 + 10 * vs))])
 ]);
 
 var n = new LocalNetworkViewModel(canvasSpace, 1, ln);
 
-n.addCar(new Car(ln.calculateQuickestPath("a", "z")));
+//n.addCar(new Car(ln.calculateQuickestPath("a", "z")));
 
 n.run(settings);
 
@@ -43,16 +47,58 @@ class JunctionSelectionRegistration{
     }
 }
 
-var carFlow = (oi, ni) => {
-    window.setInterval(() => {
+var maxNum = 0;
+var nums = [];
+var averagingNum = 2;
+
+var graphI = 0;
+graphCanvas.Context.lineWidth = 3;
+graphCanvas.Context.strokeStyle = "#0a730a";
+
+var logNum = (n: number) => {
+    if(n > maxNum){
+        maxNum = n;
+        console.log("max: " + maxNum);
+    }
+    nums.push(n);
+    if(nums.length > averagingNum){
+        var tot = 0;
+        nums.forEach(n => {
+            tot += n;
+        });
+        //console.log("avg: " + (tot/10));
+        if(graphI > graphCanvas.Width){
+            graphCanvas.Context.clearRect(0,0, graphCanvas.Width, graphCanvas.Height);
+            graphI = 0;
+        }
+        graphCanvas.Context.beginPath();
+        graphCanvas.Context.moveTo(graphI, graphCanvas.Bottom);
+        graphCanvas.Context.lineTo(graphI, graphCanvas.Bottom - graphCanvas.Height * (tot / (5000* speedConst * averagingNum)))
+        graphCanvas.Context.stroke();
+        graphCanvas.Context.closePath();
+        graphI+=5;
+        nums = [];
+    }
+}
+
+var carFlow = (oi, ni, id: string) => {
+    let carNumbers = n.Cars.length;
+    if(carNumbers < 20){
         ln.unHighlight();
-        n.addCar(new Car(ln.calculateQuickestPath(oi, ni)));
-    }, 500 + 1000 * Math.random())
+        var path = ln.calculateQuickestPath(oi, ni);
+        path.RoadSequence.forEach(r => r.Highlighted = true);
+        path.JunctionSequence.forEach(j => j.Highlighted = true);
+        n.addCar(new Car(path, logNum));
+    } 
+    //console.log(carNumbers);
+    window.setTimeout(() => {
+        carFlow(oi, ni, id);
+    }, 10 * speedConst + 20 * speedConst * Math.random())
 }
 
 var selectionRegistrations: JunctionSelectionRegistration[] = [
     new JunctionSelectionRegistration("t", false, () => {
-        var rd = new Road("r" + num, oldId, n.SelectedId, [new Lane(Direction.Multidirectional, (vs) => 500 + 50*vs)]);
+        var rd = new Road("r" + num, oldId, n.SelectedId, [new Lane(Direction.Multidirectional, (vs) => 1000 + 200*vs)]);
         ln.addRoad(rd);
         n.addRoad(rd);
     }),
@@ -60,12 +106,13 @@ var selectionRegistrations: JunctionSelectionRegistration[] = [
         ln.calculateQuickestPath(oldId, n.SelectedId);
     }),
     new JunctionSelectionRegistration("c", false, (oldId, newId) => {
-        let oi = oldId;
-        let ni = newId;
-        window.setInterval(() => {
-            ln.unHighlight();
-            n.addCar(new Car(ln.calculateQuickestPath(oi, ni)));
-        }, 500 + 1000 * Math.random())
+        carFlow(oldId, newId, Guid.newGuid());
+        // let oi = oldId;
+        // let ni = newId;
+        // window.setInterval(() => {
+        //     ln.unHighlight();
+        //     n.addCar(new Car(ln.calculateQuickestPath(oi, ni)));
+        // }, 500 + 1000 * Math.random())
     })   
 ];
 var oldId: string;
@@ -130,6 +177,15 @@ kc.registerOnKey("c", () => {
 
 document.getElementById("recentre").onclick = () => {
     n.recentre();
+}
+
+var braessButton = document.getElementById("braess");
+braessButton.onclick = () => {
+    graphCanvas.Context.strokeStyle = "#dd6f6f";
+    var rd = new Road("r" + num, "b", "c", [new Lane(Direction.Multidirectional, (vs) => 100 * speedConst + 10*vs*speedConst)]);
+    ln.addRoad(rd);
+    n.addRoad(rd);
+    braessButton.remove();
 }
 
 export class Main{
