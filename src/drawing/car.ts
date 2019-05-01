@@ -2,8 +2,11 @@ import { Path } from "../model/path";
 import { CanvasSpace } from "./canvasspace";
 import { Settings } from "../settings";
 import { Guid } from "../helpers/guid";
+import { Junction } from "../model/junction";
 
 var colours = ["red", "navy", "black", "darkorange"]
+
+export type GpsUpdateFunc = (junction: Junction) => Path;
 
 export class Car{
 
@@ -19,6 +22,12 @@ export class Car{
 
     constructor(public Path: Path, public finalReport: (totalTime: number) => void){
 
+    }
+
+    private gpsFunc: GpsUpdateFunc;
+
+    updatePathAtJunctions(func: GpsUpdateFunc){
+        this.gpsFunc = func;
     }
 
     update(){
@@ -47,6 +56,12 @@ export class Car{
                 this.finalReport(totalTime);
                 return;
             }
+
+            if(this.gpsFunc != null){
+                var achievedPath = this.Path.subPath(this.Stage);
+                this.Path = achievedPath.join(this.gpsFunc(achievedPath.getLatestJunction()));
+            }
+
             this.Path.RoadSequence[this.Stage].Lanes[0].addVehicle(this.Id);
         }
         this._stageStartTime = new Date().getTime();

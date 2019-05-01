@@ -1,5 +1,6 @@
 import { Vector } from "./vector";
 import { Junction } from "../model/junction";
+import { RoadXY } from "./roadxy";
 
 export class JunctionXY {
     public V: Vector = new Vector(0,0);
@@ -8,7 +9,7 @@ export class JunctionXY {
     constructor(public Junction: Junction, public P: Vector, public Roads: string[]){
 
     }
-    update(C: Vector, otherJunctions: JunctionXY[], otherRoads: Vector[]){
+    update(C: Vector, otherJunctions: JunctionXY[], otherRoads: RoadXY[]){
         if(this.Selected){
             return;
         }
@@ -20,8 +21,13 @@ export class JunctionXY {
                 self.A = self.A.add(j.P.directionVector(self.P).reverse().times(0.5));
             }
         });
+
+        // road tension
         otherRoads.forEach(r => {
             self.A = self.A.add((self.P.subtract(r)).inverse().times(8));
+
+            //decrease tension on busy roads?
+            //self.A = self.A.add((self.P.subtract(r)).inverse().times(r.AverageRoadTravelTime / 50))
         });
         //dampen
         self.A = self.A.subtract(self.V.times(0.08));

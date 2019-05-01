@@ -57,7 +57,7 @@ export class Path {
     }
 
     join(otherPath: Path){
-        if(otherPath.RoadSequence[0].Id != this.getLatestJunction().Id){
+        if(otherPath.JunctionSequence[0].Id != this.getLatestJunction().Id){
             throw new Error("these paths cannot be joined");
         }
         return new Path(
@@ -65,5 +65,14 @@ export class Path {
             this.junctionScoringFunction, 
             this.JunctionSequence.concat(otherPath.JunctionSequence.splice(1)), 
             this.RoadSequence.concat(otherPath.RoadSequence));
+    }
+
+    subPath(junctionIndex: number){
+        return new Path(
+            this.roadScoringFunction,
+            this.junctionScoringFunction,
+            this.JunctionSequence.slice(0, junctionIndex + 1),
+            this.RoadSequence.slice(0, junctionIndex)
+        );
     }
 }

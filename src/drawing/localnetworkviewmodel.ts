@@ -9,11 +9,12 @@ import { Vector } from "./vector";
 import { JunctionXY } from "./junctionxy";
 import { LocalNetwork } from "../model/localnetwork";
 import { Car } from "./car";
+import { RoadXY } from "./roadxy";
 
 export class LocalNetworkViewModel extends Drawing {
 
     Junctions: JunctionXY[];
-    RoadsXY: Vector[] = [];
+    RoadsXY: RoadXY[] = [];
     Cars: Car[] = [];
 
     constructor(public DrawingSpace: IAmADrawingSpace, scale: number, public Network: LocalNetwork){
@@ -59,7 +60,7 @@ export class LocalNetworkViewModel extends Drawing {
             
             var rvm = new RoadViewModel(j1.P.X, j1.P.Y, j2.P.X, j2.P.Y, settings.Scale, r.Highlighted);
             rvm.draw(drawingSpace, settings);
-            self.RoadsXY.push(j1.P.add(j2.P.subtract(j1.P).times(0.5)));
+            self.RoadsXY.push(RoadXY.fromVector(j1.P.add(j2.P.subtract(j1.P).times(0.5)), r.Lanes[0].getRemainingTravelTime(0)));
         });
 
         this.Junctions.forEach(j => {
