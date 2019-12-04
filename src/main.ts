@@ -5,6 +5,8 @@ import { MouseControl, StandardMouseSetup } from "./controls/mousecontrol";
 import { StandardKeyboardSetup } from "./controls/keyboardcontol";
 import { DefaultJunctionSelectionRegistrationList } from "./controls/selectionregistrations";
 import { braess1, braess1AdditionalRoad } from "./models/braess1";
+import { braess2, braess2AdditionalRoad } from "./models/braess2";
+
 import { TravelTimeDisplay } from "./drawing/traveltimedisplay";
 import { carFlow } from "./controls/carflow";
 

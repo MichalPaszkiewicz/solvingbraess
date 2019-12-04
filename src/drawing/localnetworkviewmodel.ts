@@ -68,6 +68,12 @@ export class LocalNetworkViewModel extends Drawing {
             jvm.draw(drawingSpace, settings, j.Selected);
         });
 
+        drawingSpace.Context.beginPath();
+        drawingSpace.Context.fillStyle = "black"
+        drawingSpace.Context.fillText(`Cars: ${self.Cars.length}`, 45, 15);
+        drawingSpace.Context.closePath();
+
+
         this.Cars.forEach(c => {
             if(c.Finished){
                 return;

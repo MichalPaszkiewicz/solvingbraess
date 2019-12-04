@@ -6,9 +6,9 @@ export class Settings implements IAmSettings {
     Scale = 1;
     SpeedConstant = 1;
     LiveDecisionMaking = false;
-    NumberOfCars = 40;
+    NumberOfCars = 100;
     // 20
-    CarInsertionRate = 80 * this.SpeedConstant + 20 * this.SpeedConstant * Math.random()
+    CarInsertionRate = 60 * this.SpeedConstant + 0 * this.SpeedConstant * Math.random()
     // 40 * ....
 }
 

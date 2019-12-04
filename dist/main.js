@@ -89,8 +89,10 @@ System.register("settings", [], function (exports_4, context_4) {
                     this.Scale = 1;
                     this.SpeedConstant = 1;
                     this.LiveDecisionMaking = false;
-                    this.NumberOfCars = 40;
-                    this.CarInsertionRate = 80 * this.SpeedConstant + 20 * this.SpeedConstant * Math.random();
+                    this.NumberOfCars = 100;
+                    // 20
+                    this.CarInsertionRate = 60 * this.SpeedConstant + 0 * this.SpeedConstant * Math.random();
+                    // 40 * ....
                 }
                 return Settings;
             }());
@@ -684,37 +686,6 @@ System.register("model/localnetwork", ["model/road", "model/lane", "model/direct
                         });
                         paths.splice(minIndex, 1);
                         paths = paths.concat(childPaths.filter(function (cp) { return !cp.hasDuplicateJunctions(); }));
-                        // old:
-                        //var newPaths: Path[] = [];
-                        // for(var i = 0; i < paths.length; i++){
-                        //     var currentPath = paths[i];
-                        //     var currentPathLastJunction = currentPath.getLatestJunction();
-                        //     var childPaths = self.findRoads(currentPathLastJunction.Id).map(r => 
-                        //         new Path(
-                        //         currentPath.roadScoringFunction,
-                        //         currentPath.junctionScoringFunction,
-                        //         [...currentPath.JunctionSequence, self.findOppositeJunctionOfRoad(currentPathLastJunction.Id, r)], 
-                        //         [...currentPath.RoadSequence, r]));
-                        //     for(var j = 0; j < childPaths.length; j++){
-                        //         var latestJunction = childPaths[j].getLatestJunction();
-                        //         if(usedJunctions.indexOf(latestJunction) == -1){
-                        //             if(latestJunction == junction2){
-                        //                 destinationFound = true;
-                        //                 childPaths[j].JunctionSequence.forEach(jun => jun.Highlighted = true);
-                        //                 childPaths[j].RoadSequence.forEach(roa => roa.Highlighted = true);
-                        //                 return childPaths[j];
-                        //             }
-                        //             else{
-                        //                 newPaths.push(childPaths[j]);
-                        //                 usedJunctions.push(latestJunction);
-                        //             }
-                        //         }
-                        //     }
-                        // }
-                        // if(usedJunctions.length > this.Junctions.length){
-                        // return;
-                        // }
-                        // paths = newPaths;
                     }
                 };
                 LocalNetwork.prototype.calculateQuickestPath = function (junction1Id, junction2Id) {
@@ -893,6 +864,10 @@ System.register("drawing/localnetworkviewmodel", ["drawing/drawing", "drawing/ju
                         var jvm = new junctionviewmodel_1.JunctionViewModel(j.P.X, j.P.Y, settings.Scale, j.Junction.Id, j.Junction.Highlighted);
                         jvm.draw(drawingSpace, settings, j.Selected);
                     });
+                    drawingSpace.Context.beginPath();
+                    drawingSpace.Context.fillStyle = "black";
+                    drawingSpace.Context.fillText("Cars: " + self.Cars.length, 45, 15);
+                    drawingSpace.Context.closePath();
                     this.Cars.forEach(function (c) {
                         if (c.Finished) {
                             return;
@@ -1251,7 +1226,6 @@ System.register("models/braess1", ["model/junction", "model/road", "model/lane",
                 new road_4.Road("r2", "a", "c", [new lane_3.Lane(direction_3.Direction.Multidirectional, (function (vs) { return 1000 * settings.SpeedConstant + 10 * settings.SpeedConstant * vs; }))]),
                 new road_4.Road("r3", "b", "z", [new lane_3.Lane(direction_3.Direction.Multidirectional, (function (vs) { return 1000 * settings.SpeedConstant + 10 * settings.SpeedConstant * vs; }))]),
                 new road_4.Road("r4", "c", "z", [new lane_3.Lane(direction_3.Direction.Multidirectional, (function (vs) { return vs * 100 * settings.SpeedConstant; }))])
-                //new Road("r5", "b", "c", [new Lane(Direction.Multidirectional, (vs => 100 + 10 * vs))])
             ]); });
             exports_28("braess1AdditionalRoad", braess1AdditionalRoad = function (settings) {
                 return new road_4.Road(guid_4.Guid.newGuid(), "b", "c", [new lane_3.Lane(direction_3.Direction.Multidirectional, function (vs) { return 100 * settings.SpeedConstant + 10 * vs * settings.SpeedConstant; })]);
@@ -1259,9 +1233,54 @@ System.register("models/braess1", ["model/junction", "model/road", "model/lane",
         }
     };
 });
-System.register("drawing/traveltimedisplay", [], function (exports_29, context_29) {
+System.register("models/braess2", ["model/junction", "model/road", "model/lane", "model/direction", "model/localnetwork", "helpers/guid"], function (exports_29, context_29) {
     "use strict";
     var __moduleName = context_29 && context_29.id;
+    var junction_3, road_5, lane_4, direction_4, localnetwork_2, guid_5, braess2, braess2AdditionalRoad;
+    return {
+        setters: [
+            function (junction_3_1) {
+                junction_3 = junction_3_1;
+            },
+            function (road_5_1) {
+                road_5 = road_5_1;
+            },
+            function (lane_4_1) {
+                lane_4 = lane_4_1;
+            },
+            function (direction_4_1) {
+                direction_4 = direction_4_1;
+            },
+            function (localnetwork_2_1) {
+                localnetwork_2 = localnetwork_2_1;
+            },
+            function (guid_5_1) {
+                guid_5 = guid_5_1;
+            }
+        ],
+        execute: function () {
+            exports_29("braess2", braess2 = function (settings) { return new localnetwork_2.LocalNetwork([
+                new junction_3.Junction("a"),
+                new junction_3.Junction("b"),
+                new junction_3.Junction("c"),
+                new junction_3.Junction("d"),
+                new junction_3.Junction("z")
+            ], [
+                new road_5.Road("r1", "a", "d", [new lane_4.Lane(direction_4.Direction.Multidirectional, (function (vs) { return 100; }))]),
+                new road_5.Road("r5", "d", "b", [new lane_4.Lane(direction_4.Direction.Multidirectional, (function (vs) { return vs * 100 * settings.SpeedConstant; }))]),
+                new road_5.Road("r2", "a", "c", [new lane_4.Lane(direction_4.Direction.Multidirectional, (function (vs) { return 1500 * settings.SpeedConstant + 10 * settings.SpeedConstant * vs; }))]),
+                new road_5.Road("r3", "b", "z", [new lane_4.Lane(direction_4.Direction.Multidirectional, (function (vs) { return 1500 * settings.SpeedConstant + 10 * settings.SpeedConstant * vs; }))]),
+                new road_5.Road("r4", "c", "z", [new lane_4.Lane(direction_4.Direction.Multidirectional, (function (vs) { return vs * 100 * settings.SpeedConstant; }))])
+            ]); });
+            exports_29("braess2AdditionalRoad", braess2AdditionalRoad = function (settings) {
+                return new road_5.Road(guid_5.Guid.newGuid(), "b", "c", [new lane_4.Lane(direction_4.Direction.Multidirectional, function (vs) { return 100 * settings.SpeedConstant + 10 * vs * settings.SpeedConstant; })]);
+            });
+        }
+    };
+});
+System.register("drawing/traveltimedisplay", [], function (exports_30, context_30) {
+    "use strict";
+    var __moduleName = context_30 && context_30.id;
     var TravelTimeDisplay;
     return {
         setters: [],
@@ -1298,13 +1317,13 @@ System.register("drawing/traveltimedisplay", [], function (exports_29, context_2
                 };
                 return TravelTimeDisplay;
             }());
-            exports_29("TravelTimeDisplay", TravelTimeDisplay);
+            exports_30("TravelTimeDisplay", TravelTimeDisplay);
         }
     };
 });
-System.register("controls/carflow", ["drawing/car"], function (exports_30, context_30) {
+System.register("controls/carflow", ["drawing/car"], function (exports_31, context_31) {
     "use strict";
-    var __moduleName = context_30 && context_30.id;
+    var __moduleName = context_31 && context_31.id;
     var car_1, carFlow;
     return {
         setters: [
@@ -1313,7 +1332,7 @@ System.register("controls/carflow", ["drawing/car"], function (exports_30, conte
             }
         ],
         execute: function () {
-            exports_30("carFlow", carFlow = function (lnvm, ln, travelTimeDisplay, settings) {
+            exports_31("carFlow", carFlow = function (lnvm, ln, travelTimeDisplay, settings) {
                 return function (selectionSettings, id) {
                     var carNumbers = lnvm.Cars.length;
                     if (carNumbers < settings.NumberOfCars) {
@@ -1336,9 +1355,9 @@ System.register("controls/carflow", ["drawing/car"], function (exports_30, conte
         }
     };
 });
-System.register("main", ["drawing/canvasspace", "settings", "drawing/localnetworkviewmodel", "controls/mousecontrol", "controls/keyboardcontol", "controls/selectionregistrations", "models/braess1", "drawing/traveltimedisplay", "controls/carflow"], function (exports_31, context_31) {
+System.register("main", ["drawing/canvasspace", "settings", "drawing/localnetworkviewmodel", "controls/mousecontrol", "controls/keyboardcontol", "controls/selectionregistrations", "models/braess1", "drawing/traveltimedisplay", "controls/carflow"], function (exports_32, context_32) {
     "use strict";
-    var __moduleName = context_31 && context_31.id;
+    var __moduleName = context_32 && context_32.id;
     var canvasspace_1, settings_1, localnetworkviewmodel_1, mousecontrol_1, keyboardcontol_1, selectionregistrations_1, braess1_1, traveltimedisplay_1, carflow_1, canvasSpace, graphCanvas, settings, ss, speedConst, ln, n, mc, travelTimeDisplay, selectionRegistrations, sksu, smsu, selection;
     return {
         setters: [
@@ -1391,9 +1410,9 @@ System.register("main", ["drawing/canvasspace", "settings", "drawing/localnetwor
         }
     };
 });
-System.register("drawing/carviewmodel", ["drawing/drawing"], function (exports_32, context_32) {
+System.register("drawing/carviewmodel", ["drawing/drawing"], function (exports_33, context_33) {
     "use strict";
-    var __moduleName = context_32 && context_32.id;
+    var __moduleName = context_33 && context_33.id;
     var drawing_4, CarViewModel;
     return {
         setters: [
@@ -1424,13 +1443,13 @@ System.register("drawing/carviewmodel", ["drawing/drawing"], function (exports_3
                 };
                 return CarViewModel;
             }(drawing_4.Drawing));
-            exports_32("CarViewModel", CarViewModel);
+            exports_33("CarViewModel", CarViewModel);
         }
     };
 });
-System.register("model/network", [], function (exports_33, context_33) {
+System.register("model/network", [], function (exports_34, context_34) {
     "use strict";
-    var __moduleName = context_33 && context_33.id;
+    var __moduleName = context_34 && context_34.id;
     var Network;
     return {
         setters: [],
@@ -1447,7 +1466,7 @@ System.register("model/network", [], function (exports_33, context_33) {
                 };
                 return Network;
             }());
-            exports_33("Network", Network);
+            exports_34("Network", Network);
         }
     };
 });
